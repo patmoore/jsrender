@@ -667,6 +667,10 @@ this.jsviews || this.jQuery && jQuery.views || (function(global, undefined) {
 					value = templates[elem.getAttribute(tmplAttr)];
 					if (!value) {
 						// Not already compiled and cached, so compile and cache the name
+						if ( elem.getAttribute( 'src' ) != null ) {
+							// template must be included in the script element. 'src' attribute to supply template is not supported
+							syntaxError(name + ":missing script");
+						}
 						name = name || "_" + autoTmplName++;
 						elem.setAttribute(tmplAttr, name);
 						value = compile(name, elem.innerHTML, parent, options); // Use tmpl as options
