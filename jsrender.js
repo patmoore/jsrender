@@ -107,10 +107,17 @@ this.jsviews || this.jQuery && jQuery.views || (function(global, undefined) {
 		var view = this,
 			tmplHelpers = view.tmpl.helpers || {};
 
-		helper = (view.ctx[helper] !== undefined ? view.ctx : tmplHelpers[helper] !== undefined ? tmplHelpers : helpers[helper] !== undefined ? helpers : {})[helper];
-		return typeof helper !== "function" ? helper : function() {
-			return helper.apply(view, arguments);
-		};
+                var returnedHelper = (view.ctx[helper] !== undefined ? view.ctx : tmplHelpers[helper] !== undefined ? tmplHelpers : helpers[helper] !== undefined ? helpers : {})[helper];
+                switch(typeof(returnedHelper)) {
+                case "function":
+                        return function() {
+                                return returnedHelper.apply(view, arguments);
+                        };
+                case "undefined":
+                        syntaxError( view.tmpl.name+": using an unknown helper method '"+helper+"'");
+                default:
+                        return returnedHelper;
+                }
 	}
 
 	//=================
