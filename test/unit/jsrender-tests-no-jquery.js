@@ -4,7 +4,7 @@ function compileTmpl( template ) {
 		return typeof jsviews.templates( template ).fn === "function" ? "compiled" : "failed compile";
 	}
 	catch(e) {
-		return "error:" + e;
+		return e.message;
 	}
 }
 
@@ -38,7 +38,7 @@ test("{{if}} {{else}}", function() {
 	expect(3);
 	equal( compileTmpl( "A_{{if true}}{{/if}}_B" ), "compiled", "Empty if block: {{if}}{{/if}}" );
 	equal( compileTmpl( "A_{{if true}}yes{{/if}}_B" ), "compiled", "{{if}}...{{/if}}" );
-	equal( compileTmpl( "A_{{if true/}}yes{{/if}}_B" ), "error:Expected block tag", "Mismatching block tags: {{if/}} {{/if}}" );
+	equal( compileTmpl( "A_{{if true/}}yes{{/if}}_B" ), "Syntax error\nUnmatched or missing tag: \"{{/if}}\" in template:\nA_{{if true/}}yes{{/if}}_B");
 });
 
 module( "{{if}}" );
@@ -51,12 +51,14 @@ test("{{if}}", function() {
 });
 
 test("{{if}} {{else}}", function() {
-	expect(5);
+	expect(7);
 	equal( jsviews.templates( "A_{{if true}}yes{{else}}no{{/if}}_B" ).render(), "A_yes_B", "{{if a}} {{else}}: a" );
 	equal( jsviews.templates( "A_{{if false}}yes{{else}}no{{/if}}_B" ).render(), "A_no_B", "{{if a}} {{else}}: !a" );
 	equal( jsviews.templates( "A_{{if true}}yes{{else true}}or{{else}}no{{/if}}_B" ).render(), "A_yes_B", "{{if a}} {{else b}} {{else}}: a" );
 	equal( jsviews.templates( "A_{{if false}}yes{{else true}}or{{else}}no{{/if}}_B" ).render(), "A_or_B", "{{if a}} {{else b}} {{else}}: b" );
 	equal( jsviews.templates( "A_{{if false}}yes{{else false}}or{{else}}no{{/if}}_B" ).render(), "A_no_B", "{{if a}} {{else b}} {{else}}: !a!b" );
+	equal( jsviews.templates( "A_{{if false}}<div title='yes'{{else}}<div title='no'{{/if}}>x</div>_B" ).render(), "A_<div title='no'>x</div>_B", "{{if}} and {{else}} work across HTML tags" );
+	equal( jsviews.templates( "A_<div title='{{if true}}yes'{{else}}no'{{/if}}>x</div>_B" ).render(), "A_<div title='yes'>x</div>_B", "{{if}} and {{else}} work across quoted strings" );
 });
 
 test("{{if}} {{else}} external templates", function() {
@@ -80,13 +82,14 @@ test("convert", function() {
 });
 
 test("paths", function() {
-	expect(16);
+	expect(17);
 	equal( jsviews.templates( "{{:a}}" ).render({ a: "aVal" }), "aVal", "a" );
 	equal( jsviews.templates( "{{:a.b}}" ).render({ a: { b: "bVal" }}), "bVal", "a.b" );
 	equal( jsviews.templates( "{{:a.b.c}}" ).render({ a: { b: { c: "cVal" }}}), "cVal", "a.b.c" );
 	equal( jsviews.templates( "{{:a.name}}" ).render({ a: { name: "aName" }} ), "aName", "a.name" );
 	equal( jsviews.templates( "{{:a['name']}}" ).render({ a: { name: "aName"} } ), "aName", "a['name']");
 	equal( jsviews.templates( "{{:a['x - _*!']}}" ).render({ a: { "x - _*!": "aName"} } ), "aName", "a['x - _*!']");
+	equal( jsviews.templates( "{{:#data['x - _*!']}}" ).render({ "x - _*!": "aName"} ), "aName", "#data['x - _*!']");
 	equal( jsviews.templates( '{{:a["x - _*!"]}}').render({ a: { "x - _*!": "aName"} }), "aName", 'a["x - _*!"]');
 	equal( jsviews.templates( "{{:a.b[1].d}}" ).render({ a: { b: [0, { d: "dVal"}]} }), "dVal", "a.b[1].d");
 	equal( jsviews.templates( "{{:a.b[1].d}}" ).render({ a: { b: {1:{ d: "dVal" }}}}), "dVal", "a.b[1].d" );
@@ -167,8 +170,8 @@ test("values", function() {
 
 test("expressions", function() {
 	expect(8);
-	equal( compileTmpl( "{{:a++}}" ), "error:Syntax error", "a++" );
-	equal( compileTmpl( "{{:(a,b)}}" ), "error:Syntax error", "(a,b)" );
+	equal( compileTmpl( "{{:a++}}" ), "Syntax error\na++", "a++" );
+	equal( compileTmpl( "{{:(a,b)}}" ), "Syntax error\n(a,b)", "(a,b)" );
 	equal( jsviews.templates( "{{: a+2}}" ).render({ a: 2, b: false }), "4", "a+2");
 	equal( jsviews.templates( "{{: b?'yes':'no' }}" ).render({ a: 2, b: false }), "no", "b?'yes':'no'");
 	equal( jsviews.templates( "{{:(a||-1) + (b||-1) }}" ).render({ a: 2, b: 0 }), "1", "a||-1");
@@ -192,7 +195,7 @@ test("{{for}}", function() {
 	equal( jsviews.render.templateForArray( [people] ), "header_JoBill_footer", 'Can render a template against an array, as a "layout template", by wrapping array in an array' );
 	equal( jsviews.render.pageTmpl({ people: people }), "header_JoBill_footer", '{{for [people] tmpl="templateForArray"/}}' );
 	equal( jsviews.templates( "{{for people towns}}{{:name}}{{/for}}" ).render({ people: people, towns: towns }), "JoBillSeattleParisDelhi", "concatenated targets: {{for people towns}}" );
-	equal( jsviews.templates( "{{for}}xxx{{:#data===~undefined}}{{/for}}" ).render(), "xxxtrue", "no parameter - renders once with #data undefined: {{for}}" );
+	equal( jsviews.templates( "{{for}}xxx{{:#data===~test}}{{/for}}" ).render({},{test:undefined}), "xxxtrue", "no parameter - renders once with #data undefined: {{for}}" );
 	equal( jsviews.templates( "{{for missingProperty}}xxx{{:#data===~undefined}}{{/for}}" ).render({}), "xxxtrue", "missingProperty - renders once with #data undefined: {{for missingProperty}}" );
 	equal( jsviews.templates( "{{for null}}xxx{{:#data===null}}{{/for}}" ).render(), "xxxtrue", "null - renders once with #data null: {{for null}}" );
 	equal( jsviews.templates( "{{for false}}xxx{{:#data}}{{/for}}" ).render(), "xxxfalse", "false - renders once with #data false: {{for false}}" );
@@ -453,7 +456,7 @@ test("template encapsulation", function() {
 		}
 	};
 	equal( jsviews.render.tmplWithNestedResources({ a: "aVal" }), "aval aValbtrue% (double:aVal&aVal) (override outer double:AVAL|AVAL)", 'Access nested resources from template' );
-	equal( jsviews.render.useLower({ a: "aVal" }), "", 'Cannot access nested resources from a different template' );
+	equal( jsviews.render.useLower({ a: "aVal" }), "Error: Unknown tag: {{lower}}. ", 'Cannot access nested resources from a different template' );
 	equal( jsviews.render.tmplWithNestedResources({ a: "aVal" }, context), "aval aValbcontextualNot2true% (double:aVal&aVal) (override outer double:contextualUpperAVAL|contextualUpperAVAL)", 'Resources passed in with context override nested resources' );
 	equal( jsviews.templates.tmplWithNestedResources.templates.templateWithDebug.fn.toString().indexOf("debugger;") > 0, true, 'Can set debug=true on nested template' );
 });
