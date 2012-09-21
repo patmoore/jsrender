@@ -117,12 +117,22 @@ this.jsviews || this.jQuery && jQuery.views || (function(global, undefined) {
 		var view = this,
 			tmplHelpers = view.tmpl.helpers || {};
 
-                var returnedHelper = (view.ctx[helper] !== undefined ? view.ctx : tmplHelpers[helper] !== undefined ? tmplHelpers : helpers[helper] !== undefined ? helpers : {})[helper];
+		var returnedHelper = (
+			view.ctx[helper] !== undefined
+				? view.ctx
+				: tmplHelpers[helper] !== undefined
+					? tmplHelpers
+					: $viewsHelpers[helper] !== undefined
+						? $viewsHelpers
+						: {}
+		)[helper];
+		return typeof helper !== "function" ? helper : function() {
+			return helper.apply(view, arguments);
                 switch(typeof(returnedHelper)) {
                 case "function":
                         return function() {
                                 return returnedHelper.apply(view, arguments);
-		};
+		        };
                 case "undefined":
                         syntaxError( view.tmpl.name+": using an unknown helper method '"+helper+"'");
                 default:
@@ -149,7 +159,7 @@ this.jsviews || this.jQuery && jQuery.views || (function(global, undefined) {
 		// Returns the rendered tag
 		var ret,
 			tmplTags = parentTmpl.tags,
-			nestedTemplates = parentTmpl.templates, 
+			nestedTemplates = parentTmpl.templates,
 			props = tagInstance.props = tagInstance.props || {},
 			tmpl = props.tmpl,
 			args = arguments.length > 6 ? slice.call(arguments, 6) : [],
@@ -169,9 +179,9 @@ this.jsviews || this.jQuery && jQuery.views || (function(global, undefined) {
 		tmpl = tmpl || content || undefined;
 
 		tagInstance.tmpl =
-		"" + tmpl === tmpl // if a string
+			"" + tmpl === tmpl // if a string
 				? nestedTemplates && nestedTemplates[tmpl] || $templates[tmpl] || $templates(tmpl)
-			: tmpl;
+				: tmpl;
 
 		tagInstance.isTag = TRUE;
 		tagInstance.converter = converter;
@@ -318,7 +328,7 @@ this.jsviews || this.jQuery && jQuery.views || (function(global, undefined) {
 				if (self.ctx) {
 					// self.ctx is an object with the contextual template parameters on the tag, such as ~foo: {{tag ~foo=expression...}}
 					$extend(mergedCtx, self.ctx);
-			}
+				}
 				if (context) {
 					// This is a context object passed programmatically from the tag function
 					$extend(mergedCtx, context);
@@ -402,7 +412,7 @@ this.jsviews || this.jQuery && jQuery.views || (function(global, undefined) {
 	function error(message) {
 		if ($views.debugMode) {
 			throw new $views.Error(message);
-	}
+		}
 	}
 
 	function syntaxError(message) {
@@ -465,25 +475,25 @@ this.jsviews || this.jQuery && jQuery.views || (function(global, undefined) {
 					block = TRUE;
 				}
 				params = (params
-				? parseParams(params, bind)
-					.replace(rBuildHash, function(all, isCtx, keyValue) {
-						if (isCtx) {
-							passedCtx += keyValue + ",";
-						} else {
-							hash += keyValue + ",";
-						}
-						return "";
-					})
-				: "");
+					? parseParams(params, bind)
+						.replace(rBuildHash, function(all, isCtx, keyValue) {
+							if (isCtx) {
+								passedCtx += keyValue + ",";
+							} else {
+								hash += keyValue + ",";
+							}
+							return "";
+						})
+					: "");
 				hash = hash.slice(0, -1);
 				params = params.slice(0, -1);
 				newNode = [
-				tagName,
-				converter || "",
-				params,
-				block && [],
-				"{" + (hash ? ("props:{" + hash + "},") : "") + "path:'" + params + "'" + (passedCtx ? ",ctx:{" + passedCtx.slice(0, -1) + "}" : "") + "}"
-			];
+						tagName,
+						converter || "",
+						params,
+						block && [],
+						"{" + (hash ? ("props:{" + hash + "},") : "") + "path:'" + params + "'" + (passedCtx ? ",ctx:{" + passedCtx.slice(0, -1) + "}" : "") + "}"
+					];
 				content.push(newNode);
 				if (block) {
 					stack.push(current);
@@ -536,33 +546,33 @@ this.jsviews || this.jQuery && jQuery.views || (function(global, undefined) {
 				if (tag === "*") {
 					code = code.slice(0, i ? -1 : -3) + ";" + node[1] + (i + 1 < l ? "ret+=" : "");
 				} else {
-				converter = node[1];
-				params = node[2];
-				content = node[3];
-				hash = node[4];
-				markup = node[5];
+					converter = node[1];
+					params = node[2];
+					content = node[3];
+					hash = node[4];
+					markup = node[5];
 
-				if (content) {
-					// Create template object for nested template
-					nestedTmpl = TmplObject(markup, tmplOptions, tmpl, nestedIndex++);
-					// Compile to AST and then to compiled function
+					if (content) {
+						// Create template object for nested template
+						nestedTmpl = TmplObject(markup, tmplOptions, tmpl, nestedIndex++);
+						// Compile to AST and then to compiled function
 						buildCode(node[3], nestedTmpl);
-					nested.push(nestedTmpl);
+						nested.push(nestedTmpl);
+					}
+					hasViewPath = hasViewPath || hash.indexOf("view") > -1;
+					code += (tag === ":"
+					? (converter === "html"
+						? (hasEncoder = TRUE, "e(" + params)
+						: converter
+							? (hasConverter = TRUE, 'c("' + converter + '",view,this,' + params)
+							: (getsValue = TRUE, "((v=" + params + ')!=u?v:""')
+					)
+					: (hasTag = TRUE, 't("' + tag + '",view,this,"' + (converter || "") + '",'
+						+ (content ? nested.length : '""') // For block tags, pass in the key (nested.length) to the nested content template
+						+ "," + hash + (params ? "," : "") + params))
+						+ ")+";
 				}
-				hasViewPath = hasViewPath || hash.indexOf("view") > -1;
-				code += (tag === ":"
-				? (converter === "html"
-					? (hasEncoder = TRUE, "e(" + params)
-					: converter
-						? (hasConverter = TRUE, 'c("' + converter + '",view,this,' + params)
-						: (getsValue = TRUE, "((v=" + params + ')!=u?v:""')
-				)
-				: (hasTag = TRUE, 't("' + tag + '",view,this,"' + (converter || "") + '",'
-					+ (content ? nested.length : '""') // For block tags, pass in the key (nested.length) to the nested content template
-					+ "," + hash + (params ? "," : "") + params))
-					+ ")+";
 			}
-		}
 		}
 		code = fnDeclStr
 		+ (getsValue ? "v," : "")
