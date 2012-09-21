@@ -126,8 +126,6 @@ this.jsviews || this.jQuery && jQuery.views || (function(global, undefined) {
 						? $viewsHelpers
 						: {}
 		)[helper];
-		return typeof helper !== "function" ? helper : function() {
-			return helper.apply(view, arguments);
                 switch(typeof(returnedHelper)) {
                 case "function":
                         return function() {
