@@ -1,17 +1,8 @@
-/// <reference path="../qunit/qunit.js" />
-/// <reference path="../../jsrender.js" />
+/*global test, equal, module, ok*/
 (function(global, $, undefined) {
 "use strict";
-(function() {
 
-function compileTmpl(template) {
-	try {
-		return typeof $.templates(null, template).fn === "function" ? "compiled" : "failed compile";
-	}
-	catch(e) {
-		return e.message;
-	}
-}
+var isIE8 = window.attachEvent && !window.addEventListener;
 
 function sort(array) {
 	var ret = "";
@@ -32,53 +23,137 @@ var person = { name: "Jo" },
 	towns = [{ name: "Seattle" },{ name: "Paris" },{ name: "Delhi" }];
 
 var tmplString =  "A_{{:name}}_B";
-$.views.allowCode = true;
+
 module("api");
-test("templates", 14, function() {
-	$.templates("myTmpl", tmplString);
-	equal($.render.myTmpl(person), "A_Jo_B", 'Compile a template and then render it: $.templates("myTmpl", tmplString); $.render.myTmpl(data);');
+
+test("templates", function() {
+	var tmplElem = document.getElementById("./test/templates/file/path.html");
+
+	// ................................ Arrange ..................................
+	$.removeData(tmplElem, "jsvTmpl"); // In case data has been set in a previous test
+
+	// ................................ Act ..................................
+	var tmpl0 = $.templates({markup: "./test/templates/file/path.html"}); // Compile template but do not cache
+
+	// ............................... Assert .................................
+	equal(!$.data(tmplElem).jsvTmpl && tmpl0.render({name: "Jo0"}), isIE8 ? "\nServerRenderedTemplate_Jo0_B" : "ServerRenderedTemplate_Jo0_B", "Compile server-generated template, without caching");
+
+	// ................................ Act ..................................
+	var tmpl1 = $.templates("./test/templates/file/path.html"); // Compile and cache, using $.data(elem, "jsvTmpl", tmpl);
+
+	// ............................... Assert .................................
+	equal(tmpl1 !== tmpl0 && $.data(tmplElem).jsvTmpl === tmpl1 && tmpl1.render({name: "Jo1"}), isIE8 ? "\nServerRenderedTemplate_Jo1_B" : "ServerRenderedTemplate_Jo1_B", "Compile server-generated template, and cache on file path");
+
+	// ................................ Act ..................................
+	var tmpl2 = $.templates("./test/templates/file/path.html"); // Use cached template, accessed by path as key
+
+	// ............................... Assert .................................
+	equal(tmpl2 === tmpl1 && tmpl1.render({name: "Jo2"}), isIE8 ? "\nServerRenderedTemplate_Jo2_B" : "ServerRenderedTemplate_Jo2_B", "Re-use cached server-generated template");
+
+	// ................................ Act ..................................
+	var tmpl3 = $.templates({markup: "./test/templates/file/path.html"}); // Re-compile template but do not cache. Leaved cached template.
+
+	// ............................... Assert .................................
+	equal(tmpl3 !== tmpl0 && tmpl3 !== tmpl1 && $.data(tmplElem).jsvTmpl === tmpl1 && tmpl3.render({name: "Jo3"}), isIE8 ? "\nServerRenderedTemplate_Jo3_B" : "ServerRenderedTemplate_Jo3_B", "Recompile server-generated template, without caching");
+
+	// ................................ Reset ................................
+	delete $.data(tmplElem).jsvTmpl;
+	document.getElementById("./test/templates/file/path.html").removeAttribute("data-jsv-tmpl");
+
+	tmplElem = $("#myTmpl")[0];
+	delete $.data(tmplElem).jsvTmpl;
+	tmplElem.removeAttribute("data-jsv-tmpl");
+
+	// ................................ Act ..................................
+	var tmpl0 = $.templates({markup: "#myTmpl"}); // Compile template declared in script block, but do not cache
+
+	// ............................... Assert .................................
+	equal(!$.data(tmplElem).jsvTmpl && tmpl0.render({name: "Jo0"}), isIE8 ? "\nA_Jo0_B" : "A_Jo0_B", "Compile template declared in script block, without caching");
+
+	// ................................ Act ..................................
+	var tmpl1 = $.templates("#myTmpl"); // Compile and cache, using $.data(elem, "jsvTmpl", tmpl);
+
+	// ............................... Assert .................................
+	equal(tmpl1 !== tmpl0 && $.data(tmplElem).jsvTmpl === tmpl1 && tmpl1.render({name: "Jo1"}), isIE8 ? "\nA_Jo1_B" : "A_Jo1_B", "Compile template declared in script block, and cache on file path");
+
+	// ................................ Act ..................................
+	var tmpl2 = $.templates("#myTmpl"); // Use cached template, accessed by $.data(elem, "jsvTmpl")
+
+	// ............................... Assert .................................
+	equal(tmpl2 === tmpl1 && tmpl1.render({name: "Jo2"}), isIE8 ? "\nA_Jo2_B" : "A_Jo2_B", "Re-use cached template declared in script block");
+
+	// ................................ Act ..................................
+	var tmpl3 = $.templates({markup: "#myTmpl"}); // Re-compile template but do not cache. Leaved cached template.
+
+	// ............................... Assert .................................
+	equal(tmpl3 !== tmpl0 && tmpl3 !== tmpl1 && $.data(tmplElem).jsvTmpl === tmpl1 && tmpl3.render({name: "Jo3"}), isIE8 ? "\nA_Jo3_B" : "A_Jo3_B", "Recompile template declared in script block, without caching");
+
+	// ................................ Reset ................................
+	delete $.data(tmplElem).jsvTmpl;
+	tmplElem.removeAttribute("data-jsv-tmpl");
+
+	// =============================== Arrange ===============================
+	// ............................... Assert .................................
+	equal($.templates("#my_tmpl2").render(), isIE8 ? "\n' \" \\ \\' \\\"" : "' \" \\ \\' \\\"", "correct treatment of ' \" and ' in template declared in script block");
+
+	equal($.templates("' \" \\ \\' \\\"").render(), "' \" \\ \\' \\\"", "correct treatment of ' \" and ' in template compiled from string");
+
+	$.templates("my_tmpl", tmplString);
+	equal($.render.my_tmpl(person), "A_Jo_B", 'Compile a template and then render it: $.templates("my_tmpl", tmplString); $.render.my_tmpl(data);');
 
 	$.templates({ myTmpl2: tmplString });
-	equal($.render.myTmpl2(person), "A_Jo_B", 'Compile and register templates: $.templates({ "myTmpl", tmplString, ...  }); $.render.myTmpl(data);');
+	equal($.render.myTmpl2(person), "A_Jo_B", 'Compile and register templates: $.templates({ "my_tmpl", tmplString, ...  }); $.render.my_tmpl(data);');
 
-	equal($.templates.myTmpl2.render(person), "A_Jo_B", 'Get named template: $.templates.myTmpl.render(data);');
+	equal($.templates.myTmpl2.render(person), "A_Jo_B", 'Get named template: $.templates.my_tmpl.render(data);');
 
 	equal($.templates(tmplString).render(person), "A_Jo_B", 'Compile without registering as named template: $.templates(tmplString).render(person);');
 
-	var tmpl2 = $.templates("#myTmpl");
-	equal($.trim(tmpl2.render(person)), "A_Jo_B", 'var tmpl = $.templates("#myTmpl"); returns compiled template for script element');
+	var tmpl2 = $.templates("#my_tmpl");
+	var tmpl3 = $.templates("#my_tmpl");
+	equal(tmpl2 === tmpl3 && $.trim(tmpl2.render(person)), "A_Jo_B", 'var tmpl = $.templates("#my_tmpl"); returns compiled template for script element');
 
 	$.templates({
-		myTmpl3: {
-			markup: "#myTmpl"
+		my_tmpl3: {
+			markup: "#my_tmpl"
 		}
 	});
-	equal($.trim($.render.myTmpl3(person)), "A_Jo_B", 'Named template for template object with selector: { markup: "#myTmpl" }');
 
-	var tmpl2 = $.templates("#myTmpl");
-	equal($.trim(tmpl2.render(person)), "A_Jo_B", 'var tmpl = $.templates("#myTmpl"); returns compiled template for script element');
+	equal($.render.my_tmpl3 === $.templates.my_tmpl3 && $.templates.my_tmpl3 !== tmpl2 && $.trim($.render.my_tmpl3(person)), "A_Jo_B", 'Named template for template object with selector: { markup: "#my_tmpl" }');
 
 	var tmpl3 = $.templates("", {
-		markup: "#myTmpl"
+		markup: "#my_tmpl"
 	});
-	equal($.trim(tmpl3.render(person)), "A_Jo_B", 'Compile from template object with selector, without registering: { markup: "#myTmpl" }');
+	equal($.trim(tmpl3.render(person)), "A_Jo_B", 'Compile from template object with selector, without registering: { markup: "#my_tmpl" }');
 
-	equal(	$.templates("#myTmpl").fn === tmpl2.fn && tmpl2.fn === tmpl3.fn, true, '$.templates("#myTmpl") caches compiled template, and does not recompile each time;');
+	var tmpl4 = $.templates({
+		markup: "#my_tmpl"
+	});
+	equal($.trim(tmpl4.render(person)), "A_Jo_B", 'Compile from template object with selector, without registering: { markup: "#my_tmpl" }');
 
-	equal(	tmpl2 === $.templates("", "#myTmpl"), true, '$.templates("#myTmpl") and $.templates("", "#myTmpl") are equivalent');
+	equal($.templates("#my_tmpl"), $.templates("#my_tmpl"), '$.templates("#my_tmpl") caches compiled template, and does not recompile each time;');
 
-	var cloned = $.templates("cloned", "#myTmpl");
-	equal(	cloned !== tmpl2 && cloned.tmplName == "cloned", true, '$.templates("cloned", "#myTmpl") will clone the cached template');
+	ok($.templates({markup: "#my_tmpl"}) !== $.templates({markup: "#my_tmpl"}), '$.templates({markup: "#my_tmpl" ...}) recompiles template, so as to merge additional options;');
 
-	$.templates({ cloned: "#myTmpl" });
-	equal(	$.templates.cloned !== tmpl2 && $.templates.cloned.tmplName == "cloned", true, '$.templates({ cloned: "#myTmpl" }) will clone the cached template');
+	equal($.templates("", "#my_tmpl"), $.templates("#my_tmpl"), '$.templates("#my_tmpl") and $.templates("", "#my_tmpl") are equivalent');
 
-	$.templates("myTmpl", null);
-	equal($.templates.myTmpl, undefined, 'Remove a named template:  $.templates("myTmpl", null);');
+	var renamed = $.templates("renamed", "#my_tmpl");
+	ok(renamed === tmpl2 && renamed.tmplName === "renamed", '$.templates("renamed", "#my_tmpl") will rename the cached template');
 
-	var tmpl3 = $.templates({
+	$.templates({ renamed2: "#my_tmpl" });
+	ok($.templates.renamed2 === tmpl2 && $.templates.renamed2.tmplName === "renamed2", '$.templates({ renamed2: "#my_tmpl" }) will rename the cached template');
+
+	$.templates("cloned", {markup: "#my_tmpl"});
+	ok($.templates.cloned !== tmpl2 && $.templates.cloned.tmplName === "cloned", '$.templates("cloned", {markup: "#my_tmpl" } }) will clone the cached template');
+
+	$.templates({ cloned2: {markup: "#my_tmpl"} });
+	ok($.templates.cloned2 !== tmpl2 && $.templates.cloned2.tmplName === "cloned2", '$.templates({ cloned: {markup: "#my_tmpl" } }) will clone the cached template');
+
+	$.templates("my_tmpl", null);
+	equal($.templates.my_tmpl, undefined, 'Remove a named template:  $.templates("my_tmpl", null);');
+
+	$.templates({
 		"scriptTmpl": {
-			markup: "#myTmpl",
+			markup: "#my_tmpl",
 			debug:true
 		},
 		"tmplFromString": {
@@ -87,26 +162,38 @@ test("templates", 14, function() {
 		}
 	});
 	equal($.templates.tmplFromString.fn.toString().indexOf("debugger;") > 0 && $.templates.scriptTmpl.fn.toString().indexOf("debugger;") > 0, true, 'Debug a template:  set debug:true on object');
+
+	// reset
+	$("#my_tmpl")[0].removeAttribute("data-jsv-tmpl");
+
+	delete $.templates.scriptTmpl;
 });
 
-test("render", 5, function() {
-	equal($.trim($("#myTmpl").render(person)), "A_Jo_B", '$(tmplSelector).render(data);'); // Trimming because IE adds whitespace
+test("render", 7, function() {
+	equal($.trim($("#my_tmpl").render(person)), "A_Jo_B", '$(tmplSelector).render(data);'); // Trimming because IE adds whitespace
 
-	var tmpl3 = $.templates("myTmpl4", tmplString);
+	var tmpl3 = $.templates("my_tmpl4", tmplString);
 
-	equal($.render.myTmpl4(person), "A_Jo_B", '$.render.myTmpl(object);');
-	equal($.render.myTmpl4(people), "A_Jo_BA_Bill_B", '$.render.myTmpl(array);');
+	equal($.render.my_tmpl4(person), "A_Jo_B", '$.render.my_tmpl(object);');
+	equal($.render.my_tmpl4(people), "A_Jo_BA_Bill_B", '$.render.my_tmpl(array);');
 
-	var tmplObject = $.templates.myTmpl4;
-	equal(tmplObject.render(people), "A_Jo_BA_Bill_B", 'var tmplObject = $.templates.myTmpl; tmplObject.render(data);');
+	var tmplObject = $.templates.my_tmpl4;
+	equal(tmplObject.render(people), "A_Jo_BA_Bill_B", 'var tmplObject = $.templates.my_tmpl; tmplObject.render(data);');
 
-	$.templates("myTmpl5", "A_{{for}}inner{{:name}}content{{/for}}_B");
-	equal($.templates.myTmpl5.tmpls[0].render(person), "innerJocontent", 'Nested template objects: $.templates.myTmpl.tmpls');
+	$.templates("my_tmpl5", "A_{{for}}inner{{:name}}content{{/for}}_B");
+	equal($.templates.my_tmpl5.tmpls[0].render(person), "innerJocontent", 'Nested template objects: $.templates.my_tmpl.tmpls');
+
+	$("#result").html("<script id='tmpl' type='text/x-jsrender'>Content{{for #data}}{{:#index}}{{/for}}{{:~foo}}</script>");
+	equal($("#tmpl").render([null,undefined,1], {foo:"foovalue"}, true), (isIE8 ? "\n" : "") + "Content012foovalue", 'render(array, helpers, true) renders an array without iteration, while passing in helpers');
+
+	$("#result").html("<script id='tmpl' type='text/x-jsrender'>Content{{for #data}}{{:#index}}{{/for}}{{:~foo}}</script>");
+	equal($("#tmpl").render([null, undefined, 1], true), (isIE8 ? "\n" : "") + "Content012", 'render(array, true) renders an array without iteration');
+	$("#result").empty();
 });
 
 test("converters", 3, function() {
 	function loc(data) {
-		switch (data) { case "desktop": return "bureau"; };
+		switch (data) { case "desktop": return "bureau"; }
 	}
 	$.views.converters({ loc: loc });
 	equal($.templates("{{loc:#data}}:{{loc:'desktop'}}").render("desktop"), "bureau:bureau", "$.views.converters({ loc: locFunction })");
@@ -119,11 +206,11 @@ test("converters", 3, function() {
 });
 
 test("tags", 3, function() {
-	$.views.tags({ sort: sort });
-	equal($.templates("{{sort people reverse=true}}{{:name}}{{/sort}}").render({ people: people }), "BillJo", "$.views.tags({ sort: sortFunction })");
+	$.views.tags({ sort1: sort });
+	equal($.templates("{{sort1 people reverse=true}}{{:name}}{{/sort1}}").render({ people: people }), "BillJo", "$.views.tags({ sort: sortFunction })");
 
 	$.views.tags("sort2", sort);
-	equal($.views.tags.sort.render === sort, true, 'sortFunction === $.views.tags.sort');
+	equal($.views.tags.sort1.render === sort, true, 'sortFunction === $.views.tags.sort');
 
 	$.views.tags("sort2", null);
 	equal($.views.tags.sort2, undefined, 'Remove a registered tag: $.views.tag({ sor: null })');
@@ -139,7 +226,7 @@ test("helpers", 3, function() {
 			return !value;
 		},
 		concat: concat
-	})
+	});
 	equal($.templates("{{:~concat(a, 'b', ~not(false))}}").render({ a: "aVal" }), "aValbtrue", "$.views.helpers({ concat: concatFunction })");
 
 	$.views.helpers({ concat2: concat });
@@ -159,8 +246,7 @@ test("template encapsulation", 1, function() {
 			}
 		}
 	});
-	equal($.render.myTmpl6({ people: people }), "BillJo", '$.templates("myTmpl", tmplObjWithNestedItems);');
+	equal($.render.myTmpl6({ people: people }), "BillJo", '$.templates("my_tmpl", tmplObjWithNestedItems);');
 });
 
-})();
 })(this, this.jQuery);

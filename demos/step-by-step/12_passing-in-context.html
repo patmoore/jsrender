@@ -1,7 +1,7 @@
 ﻿<!DOCTYPE html>
 <html>
 <head>
-	<script src="http://code.jquery.com/jquery.js" type="text/javascript"></script>
+	<script src="http://code.jquery.com/jquery-1.11.2.js" type="text/javascript"></script>
 	<script src="../../jsrender.js" type="text/javascript"></script>
 	<link href="../resources/demos.css" rel="stylesheet" type="text/css" />
 
@@ -10,9 +10,9 @@
 <body>
 <a href="../demos.html">JsRender Demos</a><br />
 
-<h3>Template context: Passing in additional variables to a render() call</h3>
+<h3>Template context: Passing in additional helpers to a render() call</h3>
 
-<div class="subhead">Passing in contextual variables or helper functions, using the options parameter of <em>...render( data, options );</em></div>
+<div class="subhead">Passing in contextual variables or helper functions, using the helpersOrContext parameter of <em>...render( data, helpersOrContext );</em></div>
 <pre>
 $( selector ).render( data, {
     reverseSort: reverse,
@@ -23,7 +23,7 @@ $( selector ).render( data, {
 })
 </pre>
 
-<div class="subhead">Use <em>~name</em> to context variables or helpers by name - whether passed in with options,</div>
+<div class="subhead">Use <em>~name</em> to access context variables or helpers by name - whether passed in with options,</div>
 <div class="subhead">registered globally as helpers, or registered as helpers for a specific template.</div>
 
 <pre>
